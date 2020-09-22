@@ -1,0 +1,30 @@
+- name: Run Openscap with custom profile on hosts and publish output
+  hosts: all
+  vars:
+    oscap_profile: xccdf_org.ssgproject.content_profile_pci-dss
+    oscap_policy: ssg-rhel-dss
+
+  tasks:
+  - name: Ensure OpenScap scanner and guide is installed and latest
+    package:
+      name: "{{ item }}"
+      state: latest
+    with_items:
+    - openscap-scanner
+    - scap-security-guide
+
+  - block:
+    - name: run openscap
+      command: oscap xccdf eval \
+        --profile {{ oscap_profile }} \
+        --results-arf /tmp/oscap-arf.xml \
+        --report /tmp/oscap-report.html \
+        --fetch-remote-resources \
+        /usr/share/xml/scap/ssg/content/{{ oscap_policy }}.xml
+
+    always:
+    - name: download report
+      fetch:
+        src: /tmp/oscap-report.html
+        dest: ../oscap-reports/{{ inventory_hostname }}.html
+        flat: yes
